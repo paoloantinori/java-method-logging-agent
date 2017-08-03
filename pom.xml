@@ -1,0 +1,123 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.redhat.fuse</groupId>
+  <artifactId>java-method-logging-agent</artifactId>
+  <version>1.0</version>
+  <packaging>jar</packaging>
+
+  <name>java-method-logging-agent</name>
+  <url>http://maven.apache.org</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <tools.jar>/file-not-found/tools.jar</tools.jar>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm</artifactId>
+      <version>5.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.javassist</groupId>
+      <artifactId>javassist</artifactId>
+      <version>3.21.0-GA</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Premain-Class>com.redhat.fuse.AgentMain</Premain-Class>
+              <Agent-Class>com.redhat.fuse.AgentMain</Agent-Class>
+              <Can-Redefine-Classes>true</Can-Redefine-Classes>
+              <Can-Retransform-Classes>true</Can-Retransform-Classes>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <relocations>
+                <relocation>
+                  <pattern>org.objectweb.asm</pattern>
+                  <shadedPattern>agent.org.objectweb.asm</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.javassist</pattern>
+                  <shadedPattern>agent.org.javassist</shadedPattern>
+                </relocation>
+              </relocations>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <!-- normally tools jar is in ../lib/tools.jar -->
+      <id>default-toolsjar-profile</id>
+      <activation>
+        <file>
+          <exists>${java.home}/../lib/tools.jar</exists>
+        </file>
+      </activation>
+      <properties>
+        <tools.jar>${java.home}/../lib/tools.jar</tools.jar>
+      </properties>
+    </profile>
+    <!-- We override the tools.jar property on mac osx -->
+    <profile>
+      <!-- on pre-jdk7 mac releases tools jar is in ../Classes/classes.jar -->
+      <id>mac-toolsjar-profile</id>
+      <activation>
+        <file>
+          <exists>${java.home}/../Classes/classes.jar</exists>
+        </file>
+      </activation>
+      <properties>
+        <tools.jar>${java.home}/../Classes/classes.jar</tools.jar>
+      </properties>
+    </profile>
+    <!-- the AgentAttach class uses the VM_Attach API which is available in the JDK tools jar
+         in JDK6/7/8. In JDK9 it is always available via the system loader.
+    -->
+    <profile>
+      <id>use-toolsjar-profile</id>
+      <activation>
+        <jdk>[1.6,1.8]</jdk>
+      </activation>
+      <dependencies>
+        <dependency>
+          <groupId>com.sun</groupId>
+          <artifactId>tools</artifactId>
+          <version>1.6</version>
+          <scope>system</scope>
+          <systemPath>${tools.jar}</systemPath>
+        </dependency>
+      </dependencies>
+    </profile>
+  </profiles>
+
+</project>
